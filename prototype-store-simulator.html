@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>门店运行模拟器原型</title>
+    <style>
+      :root {
+        --paper: #f7f3eb;
+        --ink: #292825;
+        --muted: #77716a;
+        --line: rgba(41, 40, 37, 0.12);
+        --accent: #d97757;
+        --blue: #4f8fbf;
+        --green: #4d9f72;
+        --amber: #d89a38;
+        --red: #c95f5b;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--paper);
+        color: var(--ink);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .page {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 0;
+      }
+
+      .stage-wrap {
+        min-height: 100vh;
+        padding: 34px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .title {
+        max-width: 760px;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--accent);
+        font-size: 13px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: Georgia, "Songti SC", serif;
+        font-size: 42px;
+        font-weight: 500;
+        line-height: 1.1;
+      }
+
+      .subtitle {
+        margin: 14px 0 0;
+        max-width: 680px;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.8;
+      }
+
+      .mode-toggle {
+        display: flex;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.42);
+      }
+
+      .mode-toggle button {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 16px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .mode-toggle button.active {
+        background: var(--ink);
+        color: white;
+      }
+
+      .stage-shell {
+        position: relative;
+        flex: 1;
+        min-height: 560px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 78% 18%, rgba(217, 119, 87, 0.12), transparent 28%),
+          linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.16));
+      }
+
+      .store-stage {
+        position: absolute;
+        inset: 0;
+        padding: 44px;
+      }
+
+      .store {
+        position: relative;
+        width: min(760px, 86%);
+        height: min(520px, 78%);
+        margin: 46px auto 0;
+        border: 2px solid rgba(41, 40, 37, 0.16);
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: 0 30px 70px rgba(41, 40, 37, 0.08);
+        transition: transform 500ms ease, border-radius 500ms ease;
+      }
+
+      .store-stage.iso .store {
+        transform: rotateX(58deg) rotateZ(-38deg) translateY(40px);
+        transform-style: preserve-3d;
+        border-radius: 22px;
+      }
+
+      .zone {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(41, 40, 37, 0.12);
+        border-radius: 18px;
+        color: rgba(41, 40, 37, 0.58);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        background: rgba(255, 255, 255, 0.42);
+      }
+
+      .cashier {
+        left: 8%;
+        bottom: 9%;
+        width: 20%;
+        height: 18%;
+        background: rgba(79, 143, 191, 0.12);
+      }
+
+      .kitchen {
+        right: 7%;
+        top: 8%;
+        width: 25%;
+        height: 30%;
+        background: rgba(217, 119, 87, 0.12);
+      }
+
+      .storage {
+        right: 7%;
+        bottom: 9%;
+        width: 22%;
+        height: 20%;
+        background: rgba(77, 159, 114, 0.12);
+      }
+
+      .entry {
+        left: 8%;
+        top: 9%;
+        width: 18%;
+        height: 18%;
+        background: rgba(216, 154, 56, 0.12);
+      }
+
+      .table {
+        position: absolute;
+        width: 82px;
+        height: 58px;
+        border-radius: 16px;
+        border: 1px solid rgba(41, 40, 37, 0.14);
+        background: #fffaf2;
+        box-shadow: 0 10px 24px rgba(41, 40, 37, 0.06);
+      }
+
+      .table::after {
+        content: attr(data-name);
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(41, 40, 37, 0.48);
+        font-size: 12px;
+      }
+
+      .t1 { left: 36%; top: 18%; }
+      .t2 { left: 50%; top: 28%; }
+      .t3 { left: 34%; top: 52%; }
+      .t4 { left: 54%; top: 60%; }
+
+      .person {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 8px 18px rgba(41, 40, 37, 0.18);
+        transition: left 700ms ease, top 700ms ease, opacity 300ms ease;
+        z-index: 4;
+      }
+
+      .person::after {
+        content: "";
+        position: absolute;
+        left: 7px;
+        top: 22px;
+        width: 8px;
+        height: 16px;
+        border-radius: 8px;
+        background: inherit;
+      }
+
+      .guest { background: var(--amber); }
+      .staff { background: var(--blue); }
+      .boss { background: var(--green); }
+
+      .g1 { left: 15%; top: 22%; }
+      .g2 { left: 23%; top: 23%; }
+      .g3 { left: 37%; top: 34%; }
+      .waiter { left: 28%; top: 68%; }
+      .owner { left: 69%; top: 69%; }
+
+      .flow {
+        position: absolute;
+        height: 3px;
+        border-radius: 999px;
+        opacity: 0;
+        transform-origin: left center;
+        transition: opacity 250ms ease;
+      }
+
+      .flow.active {
+        opacity: 1;
+      }
+
+      .flow::after {
+        content: "";
+        position: absolute;
+        right: -5px;
+        top: -4px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: pulse 1s infinite;
+      }
+
+      .order-flow {
+        left: 41%;
+        top: 39%;
+        width: 265px;
+        color: var(--accent);
+        background: currentColor;
+        transform: rotate(-22deg);
+      }
+
+      .stock-flow {
+        right: 14%;
+        bottom: 26%;
+        width: 150px;
+        color: var(--green);
+        background: currentColor;
+        transform: rotate(-92deg);
+      }
+
+      .member-flow {
+        left: 19%;
+        bottom: 21%;
+        width: 210px;
+        color: var(--blue);
+        background: currentColor;
+        transform: rotate(-34deg);
+      }
+
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.85; }
+        50% { transform: scale(1.8); opacity: 0.2; }
+      }
+
+      .tag {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 9px 12px;
+        background: rgba(41, 40, 37, 0.84);
+        color: white;
+        font-size: 12px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 250ms ease, transform 250ms ease;
+        z-index: 7;
+      }
+
+      .tag.active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .tag::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .tag-order { left: 44%; top: 30%; }
+      .tag-kitchen { right: 9%; top: 41%; }
+      .tag-stock { right: 9%; bottom: 31%; }
+      .tag-member { left: 26%; bottom: 24%; }
+
+      .panel {
+        min-height: 100vh;
+        padding: 28px;
+        border-left: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.55);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .panel h2 {
+        margin: 0;
+        font-family: Georgia, "Songti SC", serif;
+        font-size: 28px;
+        font-weight: 500;
+      }
+
+      .scenes {
+        display: grid;
+        gap: 10px;
+      }
+
+      .scene-btn {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.56);
+        text-align: left;
+        cursor: pointer;
+        color: var(--ink);
+      }
+
+      .scene-btn.active {
+        border-color: rgba(217, 119, 87, 0.48);
+        background: rgba(217, 119, 87, 0.12);
+      }
+
+      .scene-name {
+        display: block;
+        font-weight: 650;
+        margin-bottom: 6px;
+      }
+
+      .scene-desc {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .status-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      .status-card h3 {
+        margin: 0 0 12px;
+        font-size: 15px;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 10px;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(41, 40, 37, 0.1);
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+
+      .step.active {
+        color: var(--ink);
+      }
+
+      .step.active .dot {
+        background: var(--accent);
+        color: white;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .metric {
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(41, 40, 37, 0.05);
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+
+      .metric strong {
+        font-size: 20px;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-top: auto;
+      }
+
+      .primary,
+      .ghost {
+        border-radius: 14px;
+        padding: 13px 16px;
+        cursor: pointer;
+      }
+
+      .primary {
+        border: 0;
+        background: var(--ink);
+        color: white;
+      }
+
+      .ghost {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--ink);
+      }
+
+      @media (max-width: 980px) {
+        .page {
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          min-height: auto;
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+
+        .stage-wrap {
+          min-height: auto;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .stage-wrap {
+          padding: 20px;
+        }
+
+        .topbar {
+          flex-direction: column;
+        }
+
+        h1 {
+          font-size: 32px;
+        }
+
+        .stage-shell {
+          min-height: 520px;
+        }
+
+        .store-stage {
+          padding: 18px;
+        }
+
+        .store {
+          width: 100%;
+          height: 420px;
+          margin-top: 44px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="stage-wrap">
+        <div class="topbar">
+          <div class="title">
+            <p class="eyebrow">Store Operation Simulator</p>
+            <h1>让商家看见系统在物理门店里如何运转</h1>
+            <p class="subtitle">
+              这个原型不演示按钮功能，而是把顾客、员工、后厨、库存、会员和老板报表放进同一个门店现场，展示 SaaS 如何把混乱动作变成经营链路。
+            </p>
+          </div>
+          <div class="mode-toggle" aria-label="视图切换">
+            <button class="active" data-mode="flat">平面</button>
+            <button data-mode="iso">伪 3D</button>
+          </div>
+        </div>
+
+        <div class="stage-shell">
+          <div id="stage" class="store-stage">
+            <div class="store">
+              <div class="zone entry">入口</div>
+              <div class="zone cashier">收银台</div>
+              <div class="zone kitchen">后厨</div>
+              <div class="zone storage">仓库</div>
+              <div class="table t1" data-name="A1"></div>
+              <div class="table t2" data-name="A2"></div>
+              <div class="table t3" data-name="B1"></div>
+              <div class="table t4" data-name="B2"></div>
+              <div class="person guest g1" title="顾客"></div>
+              <div class="person guest g2" title="排队顾客"></div>
+              <div class="person guest g3" title="用餐顾客"></div>
+              <div class="person staff waiter" title="店员"></div>
+              <div class="person boss owner" title="老板"></div>
+              <div class="flow order-flow" data-flow="order"></div>
+              <div class="flow stock-flow" data-flow="stock"></div>
+              <div class="flow member-flow" data-flow="member"></div>
+              <div class="tag tag-order" data-tag="order">顾客扫码点餐，订单进入系统</div>
+              <div class="tag tag-kitchen" data-tag="kitchen">后厨自动收到制作单</div>
+              <div class="tag tag-stock" data-tag="stock">售出菜品同步扣减库存</div>
+              <div class="tag tag-member" data-tag="member">消费记录沉淀为会员资产</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div>
+          <p class="eyebrow">Scenario</p>
+          <h2>门店场景</h2>
+        </div>
+
+        <div class="scenes">
+          <button class="scene-btn active" data-scene="peak">
+            <span class="scene-name">午餐高峰</span>
+            <span class="scene-desc">扫码点餐、后厨打印、收银减压，让老板看到系统怎样减少等待和错单。</span>
+          </button>
+          <button class="scene-btn" data-scene="stock">
+            <span class="scene-name">库存预警</span>
+            <span class="scene-desc">每卖出一份菜，原料库存同步变化，低库存自动提醒补货。</span>
+          </button>
+          <button class="scene-btn" data-scene="member">
+            <span class="scene-name">会员复购</span>
+            <span class="scene-desc">顾客消费后沉淀资料，系统按消费行为发券，引导二次到店。</span>
+          </button>
+        </div>
+
+        <div class="status-card">
+          <h3>系统正在做什么</h3>
+          <div id="timeline" class="timeline"></div>
+        </div>
+
+        <div class="status-card">
+          <h3>经营指标变化</h3>
+          <div class="metrics">
+            <div class="metric">
+              <span>排队压力</span>
+              <strong id="queue">高</strong>
+            </div>
+            <div class="metric">
+              <span>错单风险</span>
+              <strong id="mistake">中</strong>
+            </div>
+            <div class="metric">
+              <span>库存可见性</span>
+              <strong id="stock">低</strong>
+            </div>
+            <div class="metric">
+              <span>会员沉淀</span>
+              <strong id="member">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="play" class="primary">播放一次</button>
+          <button id="reset" class="ghost">重置</button>
+        </div>
+      </aside>
+    </main>
+
+    <script>
+      const stage = document.querySelector("#stage");
+      const modeButtons = document.querySelectorAll("[data-mode]");
+      const sceneButtons = document.querySelectorAll("[data-scene]");
+      const timeline = document.querySelector("#timeline");
+      const playButton = document.querySelector("#play");
+      const resetButton = document.querySelector("#reset");
+      const metrics = {
+        queue: document.querySelector("#queue"),
+        mistake: document.querySelector("#mistake"),
+        stock: document.querySelector("#stock"),
+        member: document.querySelector("#member"),
+      };
+
+      const scenes = {
+        peak: {
+          steps: [
+            "顾客从入口进入，排队准备点单。",
+            "顾客扫码点餐，订单不再全部挤到收银台。",
+            "系统把订单直接发送到后厨，减少口头传单。",
+            "收银台只处理异常和结账，高峰压力下降。",
+          ],
+          flows: ["order", "kitchen"],
+          tags: ["order", "kitchen"],
+          metrics: { queue: "下降", mistake: "低", stock: "中", member: "12" },
+        },
+        stock: {
+          steps: [
+            "菜品售出后，系统记录销量。",
+            "原料库存同步扣减，老板不用等月底盘点。",
+            "低库存触发提醒，避免高峰突然断货。",
+            "热销菜和滞销菜进入报表，帮助调整采购。",
+          ],
+          flows: ["order", "stock"],
+          tags: ["order", "stock"],
+          metrics: { queue: "中", mistake: "低", stock: "高", member: "8" },
+        },
+        member: {
+          steps: [
+            "顾客完成消费，系统留下消费记录。",
+            "消费金额、菜品偏好和到店时间进入会员资料。",
+            "系统自动发放复购券或储值提醒。",
+            "老板看到哪些顾客值得重点维护。",
+          ],
+          flows: ["member"],
+          tags: ["member"],
+          metrics: { queue: "中", mistake: "低", stock: "中", member: "28" },
+        },
+      };
+
+      let activeScene = "peak";
+      let activeStep = 0;
+      let timer = 0;
+
+      function renderTimeline() {
+        timeline.innerHTML = scenes[activeScene].steps
+          .map((step, index) => `
+            <div class="step ${index <= activeStep ? "active" : ""}">
+              <div class="dot">${index + 1}</div>
+              <div>${step}</div>
+            </div>
+          `)
+          .join("");
+      }
+
+      function setVisibility() {
+        document.querySelectorAll("[data-flow]").forEach((flow) => {
+          const name = flow.dataset.flow;
+          flow.classList.toggle("active", scenes[activeScene].flows.includes(name) && activeStep >= 1);
+        });
+
+        document.querySelectorAll("[data-tag]").forEach((tag) => {
+          const name = tag.dataset.tag;
+          tag.classList.toggle("active", scenes[activeScene].tags.includes(name) && activeStep >= 1);
+        });
+      }
+
+      function updateMetrics(final = false) {
+        const values = final
+          ? scenes[activeScene].metrics
+          : { queue: "高", mistake: "中", stock: "低", member: "0" };
+        Object.entries(values).forEach(([key, value]) => {
+          metrics[key].textContent = value;
+        });
+      }
+
+      function render() {
+        renderTimeline();
+        setVisibility();
+        updateMetrics(activeStep >= scenes[activeScene].steps.length - 1);
+      }
+
+      function reset() {
+        window.clearInterval(timer);
+        activeStep = 0;
+        render();
+      }
+
+      function play() {
+        reset();
+        timer = window.setInterval(() => {
+          activeStep += 1;
+          render();
+          if (activeStep >= scenes[activeScene].steps.length - 1) {
+            window.clearInterval(timer);
+          }
+        }, 900);
+      }
+
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          modeButtons.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          stage.classList.toggle("iso", button.dataset.mode === "iso");
+        });
+      });
+
+      sceneButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          sceneButtons.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          activeScene = button.dataset.scene;
+          reset();
+        });
+      });
+
+      playButton.addEventListener("click", play);
+      resetButton.addEventListener("click", reset);
+
+      render();
+    </script>
+  </body>
+</html>
