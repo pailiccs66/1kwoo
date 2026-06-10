@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: process.env.GITHUB_PAGES === 'true' ? '/1kwoo/' : '/',
   build: {
     sourcemap: 'hidden',
   },
